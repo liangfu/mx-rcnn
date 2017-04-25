@@ -1,5 +1,7 @@
 import numpy as np
-from ..cython.bbox import bbox_overlaps_cython
+import sys, os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__),'..'))
+from cython.bbox import bbox_overlaps_cython
 
 
 def bbox_overlaps(boxes, query_boxes):

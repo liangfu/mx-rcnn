@@ -5,31 +5,31 @@ from rcnn.config import config
 
 eps = 2e-5
 use_global_stats = True
+
 workspace = 512
 res_deps = {'50': (3, 4, 6, 3), '101': (3, 4, 23, 3), '152': (3, 8, 36, 3), '200': (3, 24, 36, 3)}
 units = res_deps['101']
 filter_list = [256, 512, 1024, 2048]
 
+workspace = 256
+units = (2, 2, 2, 2)
+filter_list = [64, 128, 256, 512]
 
 def residual_unit(data, num_filter, stride, dim_match, name):
     bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name=name + '_bn1')
     act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
-    conv1 = mx.sym.Convolution(data=act1, num_filter=int(num_filter * 0.25), kernel=(1, 1), stride=(1, 1), pad=(0, 0),
+    conv1 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3, 3), stride=stride, pad=(1, 1),
                                no_bias=True, workspace=workspace, name=name + '_conv1')
     bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name=name + '_bn2')
     act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
-    conv2 = mx.sym.Convolution(data=act2, num_filter=int(num_filter * 0.25), kernel=(3, 3), stride=stride, pad=(1, 1),
+    conv2 = mx.sym.Convolution(data=act2, num_filter=num_filter, kernel=(3, 3), stride=(1, 1), pad=(1, 1),
                                no_bias=True, workspace=workspace, name=name + '_conv2')
-    bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name=name + '_bn3')
-    act3 = mx.sym.Activation(data=bn3, act_type='relu', name=name + '_relu3')
-    conv3 = mx.sym.Convolution(data=act3, num_filter=num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), no_bias=True,
-                               workspace=workspace, name=name + '_conv3')
     if dim_match:
         shortcut = data
     else:
         shortcut = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(1, 1), stride=stride, no_bias=True,
                                       workspace=workspace, name=name + '_sc')
-    sum = mx.sym.ElementWiseSum(*[conv3, shortcut], name=name + '_plus')
+    sum = mx.sym.ElementWiseSum(*[conv2, shortcut], name=name + '_plus')
     return sum
 
 
@@ -96,7 +96,7 @@ def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCH
     rpn_cls_act_reshape = mx.symbol.Reshape(
         data=rpn_cls_act, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_act_reshape')
     if config.TRAIN.CXX_PROPOSAL:
-        rois = mx.symbol.Proposal(
+        rois = mx.contrib.symbol.Proposal(
             cls_prob=rpn_cls_act_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
             feature_stride=config.RPN_FEAT_STRIDE, scales=tuple(config.ANCHOR_SCALES), ratios=tuple(config.ANCHOR_RATIOS),
             rpn_pre_nms_top_n=config.TRAIN.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=config.TRAIN.RPN_POST_NMS_TOP_N,
@@ -172,7 +172,7 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
     rpn_cls_prob_reshape = mx.symbol.Reshape(
         data=rpn_cls_prob, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_prob_reshape')
     if config.TEST.CXX_PROPOSAL:
-        rois = mx.symbol.Proposal(
+        rois = mx.contrib.symbol.Proposal(
             cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
             feature_stride=config.RPN_FEAT_STRIDE, scales=tuple(config.ANCHOR_SCALES), ratios=tuple(config.ANCHOR_RATIOS),
             rpn_pre_nms_top_n=config.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=config.TEST.RPN_POST_NMS_TOP_N,

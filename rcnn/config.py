@@ -107,17 +107,17 @@ default.frequent = 20
 default.kvstore = 'device'
 # default e2e
 default.e2e_prefix = 'model/e2e'
-default.e2e_epoch = 10
+default.e2e_epoch = 1 # 10
 default.e2e_lr = default.base_lr
 default.e2e_lr_step = '7'
 # default rpn
 default.rpn_prefix = 'model/rpn'
-default.rpn_epoch = 8
+default.rpn_epoch = 1 # 8
 default.rpn_lr = default.base_lr
 default.rpn_lr_step = '6'
 # default rcnn
 default.rcnn_prefix = 'model/rcnn'
-default.rcnn_epoch = 8
+default.rcnn_epoch = 1 # 8
 default.rcnn_lr = default.base_lr
 default.rcnn_lr_step = '6'
 
@@ -127,7 +127,7 @@ network = edict()
 network.vgg = edict()
 
 network.resnet = edict()
-network.resnet.pretrained = 'model/resnet-101'
+network.resnet.pretrained = 'model/resnet-18'
 network.resnet.pretrained_epoch = 0
 network.resnet.PIXEL_MEANS = np.array([0, 0, 0])
 network.resnet.IMAGE_STRIDE = 0

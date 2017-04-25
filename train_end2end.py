@@ -56,7 +56,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
     max_data_shape.append(('gt_boxes', (input_batch_size, 100, 5)))
     print 'providing maximum shape', max_data_shape, max_label_shape
-
+    
     # infer shape
     data_shape_dict = dict(train_data.provide_data + train_data.provide_label)
     arg_shape, out_shape, aux_shape = sym.infer_shape(**data_shape_dict)
@@ -86,6 +86,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     for k in sym.list_arguments():
         if k in data_shape_dict:
             continue
+        print '>>',k,arg_params[k].shape
         assert k in arg_params, k + ' not initialized'
         assert arg_params[k].shape == arg_shape_dict[k], \
             'shape inconsistent for ' + k + ' inferred ' + str(arg_shape_dict[k]) + ' provided ' + str(arg_params[k].shape)
