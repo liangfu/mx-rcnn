@@ -76,7 +76,7 @@ config.TEST.BATCH_IMAGES = 1
 config.TEST.CXX_PROPOSAL = True
 config.TEST.RPN_NMS_THRESH = 0.7
 config.TEST.RPN_PRE_NMS_TOP_N = 6000
-config.TEST.RPN_POST_NMS_TOP_N = 300
+config.TEST.RPN_POST_NMS_TOP_N = 100
 config.TEST.RPN_MIN_SIZE = config.RPN_FEAT_STRIDE
 
 # RPN generate proposal

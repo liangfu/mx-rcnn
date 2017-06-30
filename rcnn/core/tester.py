@@ -3,6 +3,7 @@ import os
 import time
 import mxnet as mx
 import numpy as np
+import cv2
 
 from module import MutableModule
 from rcnn.config import config
@@ -34,10 +35,10 @@ class Predictor(object):
             print (name, array.shape, ('%.1fms' % (float(time.time()-stat_helper.start_time)*1000)))
             stat_helper.start_time=time.time()
         stat_helper.start_time=float(time.time())
-        for e in self._mod._curr_module._exec_group.execs:
-            e.set_monitor_callback(stat_helper)
+        # for e in self._mod._curr_module._exec_group.execs:
+        #     e.set_monitor_callback(stat_helper)
         
-        self._mod.forward(data_batch)
+        self._mod.forward(data_batch, is_train=False)
         return dict(zip(self._mod.output_names, self._mod.get_outputs()))
 
 
@@ -221,27 +222,30 @@ def vis_all_detection(im_array, detections, class_names, scale):
     :param scale: visualize the scaled image
     :return:
     """
-    import matplotlib.pyplot as plt
-    import random
-    im = image.transform_inverse(im_array, config.PIXEL_MEANS)
-    plt.imshow(im)
-    for j, name in enumerate(class_names):
-        if name == '__background__':
-            continue
-        color = (random.random(), random.random(), random.random())  # generate a random color
-        dets = detections[j]
-        for det in dets:
-            bbox = det[:4] * scale
-            score = det[-1]
-            rect = plt.Rectangle((bbox[0], bbox[1]),
-                                 bbox[2] - bbox[0],
-                                 bbox[3] - bbox[1], fill=False,
-                                 edgecolor=color, linewidth=3.5)
-            plt.gca().add_patch(rect)
-            plt.gca().text(bbox[0], bbox[1] - 2,
-                           '{:s} {:.3f}'.format(name, score),
-                           bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # import random
+    # im = image.transform_inverse(im_array, config.PIXEL_MEANS)
+    # plt.imshow(im)
+    # for j, name in enumerate(class_names):
+    #     if name == '__background__':
+    #         continue
+    #     color = (random.random(), random.random(), random.random())  # generate a random color
+    #     dets = detections[j]
+    #     for det in dets:
+    #         bbox = det[:4] * scale
+    #         score = det[-1]
+    #         rect = plt.Rectangle((bbox[0], bbox[1]),
+    #                              bbox[2] - bbox[0],
+    #                              bbox[3] - bbox[1], fill=False,
+    #                              edgecolor=color, linewidth=3.5)
+    #         plt.gca().add_patch(rect)
+    #         plt.gca().text(bbox[0], bbox[1] - 2,
+    #                        '{:s} {:.3f}'.format(name, score),
+    #                        bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
+    # plt.show()
+    disp = draw_all_detection(im_array, detections, class_names, scale)
+    cv2.imshow("result", disp)
+    [exit(0) if cv2.waitKey(1)&0xff==27 else None]
 
 def getpallete(num_cls):
     # this function is to get the colormap for visualizing the segmentation mask
