@@ -3,6 +3,7 @@ import os
 import time
 import mxnet as mx
 import numpy as np
+import cv2
 
 from module import MutableModule
 from rcnn.config import config
@@ -22,7 +23,22 @@ class Predictor(object):
         self._mod.init_params(arg_params=arg_params, aux_params=aux_params)
 
     def predict(self, data_batch):
-        self._mod.forward(data_batch)
+        import time
+        def stat_helper(name, array):
+            """wrapper for executor callback"""
+            import ctypes
+            from mxnet.ndarray import NDArray
+            from mxnet.base import NDArrayHandle, py_str
+            array = ctypes.cast(array, NDArrayHandle)
+            array = NDArray(array, writable=False)
+            array.wait_to_read()
+            print (name, array.shape, ('%.1fms' % (float(time.time()-stat_helper.start_time)*1000)))
+            stat_helper.start_time=time.time()
+        stat_helper.start_time=float(time.time())
+        # for e in self._mod._curr_module._exec_group.execs:
+        #     e.set_monitor_callback(stat_helper)
+        
+        self._mod.forward(data_batch, is_train=False)
         return dict(zip(self._mod.output_names, self._mod.get_outputs()))
 
 
@@ -206,28 +222,48 @@ def vis_all_detection(im_array, detections, class_names, scale):
     :param scale: visualize the scaled image
     :return:
     """
-    import matplotlib.pyplot as plt
-    import random
-    im = image.transform_inverse(im_array, config.PIXEL_MEANS)
-    plt.imshow(im)
-    for j, name in enumerate(class_names):
-        if name == '__background__':
-            continue
-        color = (random.random(), random.random(), random.random())  # generate a random color
-        dets = detections[j]
-        for det in dets:
-            bbox = det[:4] * scale
-            score = det[-1]
-            rect = plt.Rectangle((bbox[0], bbox[1]),
-                                 bbox[2] - bbox[0],
-                                 bbox[3] - bbox[1], fill=False,
-                                 edgecolor=color, linewidth=3.5)
-            plt.gca().add_patch(rect)
-            plt.gca().text(bbox[0], bbox[1] - 2,
-                           '{:s} {:.3f}'.format(name, score),
-                           bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # import random
+    # im = image.transform_inverse(im_array, config.PIXEL_MEANS)
+    # plt.imshow(im)
+    # for j, name in enumerate(class_names):
+    #     if name == '__background__':
+    #         continue
+    #     color = (random.random(), random.random(), random.random())  # generate a random color
+    #     dets = detections[j]
+    #     for det in dets:
+    #         bbox = det[:4] * scale
+    #         score = det[-1]
+    #         rect = plt.Rectangle((bbox[0], bbox[1]),
+    #                              bbox[2] - bbox[0],
+    #                              bbox[3] - bbox[1], fill=False,
+    #                              edgecolor=color, linewidth=3.5)
+    #         plt.gca().add_patch(rect)
+    #         plt.gca().text(bbox[0], bbox[1] - 2,
+    #                        '{:s} {:.3f}'.format(name, score),
+    #                        bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
+    # plt.show()
+    disp = draw_all_detection(im_array, detections, class_names, scale)
+    cv2.imshow("result", disp)
+    [exit(0) if cv2.waitKey(1)&0xff==27 else None]
 
+def getpallete(num_cls):
+    # this function is to get the colormap for visualizing the segmentation mask
+    n = num_cls
+    pallete = [0]*(n*3)
+    for j in xrange(0,n):
+        lab = j
+        pallete[j*3+0] = 0
+        pallete[j*3+1] = 0
+        pallete[j*3+2] = 0
+        i = 0
+        while (lab > 0):
+            pallete[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+            pallete[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+            pallete[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+            i = i + 1
+            lab >>= 3
+    return pallete
 
 def draw_all_detection(im_array, detections, class_names, scale):
     """
@@ -243,17 +279,31 @@ def draw_all_detection(im_array, detections, class_names, scale):
     color_white = (255, 255, 255)
     im = image.transform_inverse(im_array, config.PIXEL_MEANS)
     # change to bgr
-    im = cv2.cvtColor(im, cv2.cv.CV_RGB2BGR)
+    im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
+    # palette = np.array(getpallete(256)).reshape((256,3))
+    # np.random.seed(101)
+    # np.random.shuffle(palette)
     for j, name in enumerate(class_names):
-        if name == '__background__':
+        if name in ['__background__', 'aeroplane', 
+                    'bird', 'boat', 'bottle', 'cat', 'chair',
+                    'cow', 'diningtable', 'dog', 'horse',
+                    'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']:
             continue
-        color = (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))  # generate a random color
+        # color = (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))  # generate a random color
+        color = (0,0,192)
+        # color = tuple(palette[j-1,:].tolist())
         dets = detections[j]
         for det in dets:
             bbox = det[:4] * scale
             score = det[-1]
             bbox = map(int, bbox)
             cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color=color, thickness=2)
-            cv2.putText(im, '%s %.3f' % (class_names[j], score), (bbox[0], bbox[1] + 10),
-                        color=color_white, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5)
+            text = '%s %.3f' % (class_names[j], score)
+            fontFace = cv2.FONT_HERSHEY_PLAIN
+            fontScale = 1
+            thickness = 1
+            textSize, baseLine = cv2.getTextSize(text, fontFace, fontScale, thickness)
+            cv2.rectangle(im, (bbox[0], bbox[1]-textSize[1]), (bbox[0]+textSize[0], bbox[1]), color=(128,0,0), thickness=-1)
+            cv2.putText(im, text, (bbox[0], bbox[1]),
+                        color=color_white, fontFace=fontFace, fontScale=fontScale, thickness=thickness)
     return im

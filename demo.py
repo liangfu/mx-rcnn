@@ -1,4 +1,5 @@
 import argparse
+import time
 import os
 import cv2
 import mxnet as mx
@@ -89,7 +90,6 @@ def demo_net(predictor, image_name, vis=False):
     im = cv2.imread(image_name)
     data_batch, data_names, im_scale = generate_batch(im)
     scores, boxes, data_dict = im_detect(predictor, data_batch, data_names, im_scale)
-
     all_boxes = [[] for _ in CLASSES]
     for cls in CLASSES:
         cls_ind = CLASSES.index(cls)
@@ -99,16 +99,13 @@ def demo_net(predictor, image_name, vis=False):
         dets = np.hstack((cls_boxes, cls_scores)).astype(np.float32)[keep, :]
         keep = nms(dets)
         all_boxes[cls_ind] = dets[keep, :]
-
     boxes_this_image = [[]] + [all_boxes[j] for j in range(1, len(CLASSES))]
-
     # print results
-    print 'class ---- [[x1, x2, y1, y2, confidence]]'
-    for ind, boxes in enumerate(boxes_this_image):
-        if len(boxes) > 0:
-            print '---------', CLASSES[ind], '---------'
-            print boxes
-
+    # print 'class ---- [[x1, x2, y1, y2, confidence]]'
+    # for ind, boxes in enumerate(boxes_this_image):
+    #     if len(boxes) > 0:
+    #         print '---------', CLASSES[ind], '---------'
+    #         print boxes
     if vis:
         vis_all_detection(data_dict['data'].asnumpy(), boxes_this_image, CLASSES, im_scale)
     else:
@@ -117,6 +114,39 @@ def demo_net(predictor, image_name, vis=False):
         im = draw_all_detection(data_dict['data'].asnumpy(), boxes_this_image, CLASSES, im_scale)
         cv2.imwrite(result_file, im)
 
+def demo_video(predictor, video_name, vis=False):
+    """
+    generate data_batch -> im_detect -> post process
+    :param predictor: Predictor
+    :param image_name: image name
+    :param vis: will save as a new image if not visualized
+    :return: None
+    """
+    assert os.path.exists(video_name), video_name + ' not found'
+    cap = cv2.VideoCapture(video_name)
+    while 1:
+        _, im = cap.read()
+        data_batch, data_names, im_scale = generate_batch(im)
+        tic = time.time()
+        scores, boxes, data_dict = im_detect(predictor, data_batch, data_names, im_scale)
+        print("time elapsed: %.1fms"%((time.time()-tic)*1000.,))
+        all_boxes = [[] for _ in CLASSES]
+        for cls in CLASSES:
+            cls_ind = CLASSES.index(cls)
+            cls_boxes = boxes[:, 4 * cls_ind:4 * (cls_ind + 1)]
+            cls_scores = scores[:, cls_ind, np.newaxis]
+            keep = np.where(cls_scores >= CONF_THRESH)[0]
+            dets = np.hstack((cls_boxes, cls_scores)).astype(np.float32)[keep, :]
+            keep = nms(dets)
+            all_boxes[cls_ind] = dets[keep, :]
+        boxes_this_image = [[]] + [all_boxes[j] for j in range(1, len(CLASSES))]
+        if vis:
+            vis_all_detection(data_dict['data'].asnumpy(), boxes_this_image, CLASSES, im_scale)
+        else:
+            result_file = image_name.replace('.', '_result.')
+            print 'results saved to %s' % result_file
+            im = draw_all_detection(data_dict['data'].asnumpy(), boxes_this_image, CLASSES, im_scale)
+            cv2.imwrite(result_file, im)
 
 def demo_rpn(predictor, image_name):
     """
@@ -152,7 +182,12 @@ def main():
     ctx = mx.gpu(args.gpu)
     symbol = get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
     predictor = get_net(symbol, args.prefix, args.epoch, ctx)
-    demo_net(predictor, args.image, args.vis)
+    if args.image.endswith(".mp4") or args.image.endswith(".avi"):
+        demo_video(predictor, args.image, args.vis)
+    else:
+        demo_net(predictor, args.image, args.vis)
+    # for imgidx in range(1,201):
+    #     demo_net(predictor, "data/JPEGImages/%06d.jpg" % (imgidx,), args.vis)
 
 
 # def cpu_rpn():

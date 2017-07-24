@@ -18,7 +18,13 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     # set up logger
     logging.basicConfig()
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    # logger.setLevel(logging.INFO)
+    fh = logging.FileHandler(os.path.join('log',time.strftime('%F-%T',time.localtime()).replace(':','-')+'.log'))
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
 
     # setup config
     config.TRAIN.BATCH_IMAGES = 1
