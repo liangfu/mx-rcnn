@@ -98,7 +98,7 @@ default.pretrained_epoch = 0
 default.base_lr = 0.001
 # default dataset
 default.dataset = 'PascalVOC'
-default.image_set = '2007_trainval'
+default.image_set =  '2007_trainval+2012_trainval' # '2007_trainval+2012_trainval', '2007_trainval'
 default.test_image_set = '2007_test'
 default.root_path = 'data'
 default.dataset_path = 'data/VOCdevkit'
@@ -106,18 +106,18 @@ default.dataset_path = 'data/VOCdevkit'
 default.frequent = 20
 default.kvstore = 'device'
 # default e2e
-default.e2e_prefix = 'model/e2e'
-default.e2e_epoch = 1 # 10
+default.e2e_prefix = 'model/resnet-18-rcnn' # 'model/e2e'
+default.e2e_epoch = 10 # 10
 default.e2e_lr = default.base_lr
 default.e2e_lr_step = '7'
 # default rpn
 default.rpn_prefix = 'model/rpn'
-default.rpn_epoch = 1 # 8
+default.rpn_epoch = 8 # 8
 default.rpn_lr = default.base_lr
 default.rpn_lr_step = '6'
 # default rcnn
 default.rcnn_prefix = 'model/rcnn'
-default.rcnn_epoch = 1 # 8
+default.rcnn_epoch = 8 # 8
 default.rcnn_lr = default.base_lr
 default.rcnn_lr_step = '6'
 
